@@ -6,9 +6,9 @@
 define('WEBCOMPONENTS_CLASS_IDENTIFIER', 'webcomponent-module-selector');
 
 /**
- * Implements hook_page_build().
+ * Implements hook_preprocess_page().
  */
-function webcomponents_page_build(&$page) {
+function webcomponents_preprocess_page(&$vars) {
   $components = webcomponents_load_all();
   $files = array();
   // ensure files w/ multiple elements are only
@@ -67,14 +67,25 @@ function webcomponents_entity_info() {
     ),
     'uri callback' => 'webcomponent_uri',
     'module' => 'webcomponents',
-    'entity class' => 'Entity',
-    'controller class' => 'EntityAPIController',
+    'entity class' => 'WebcomponentEntity',
+    'controller class' => 'WebcomponentEntityController',
     'fieldable' => FALSE,
     'bundle keys' => array(
       'bundle' => 'type',
     ),
   );
   return $info;
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function webcomponents_autoload_info() {
+  return array(
+    'WebComponentEntity' => 'includes/webcomponents.entity.inc',
+    'WebcomponentEntityController' => 'includes/webcomponents.entity.inc',
+    'WebcomponentEntityControllerInterface' => 'includes/webcomponents.entity.inc',
+  );
 }
 
 /**
@@ -295,7 +306,7 @@ function _webcomponents_rebuild($hide_messages = FALSE) {
                 if (is_array($entity->properties)) {
                   $entity->properties = serialize($entity->properties);
                 }
-                entity_save('webcomponent', $entity);
+                $entity->save();
               }
               else {
                 // try and create the entity instead
@@ -305,7 +316,7 @@ function _webcomponents_rebuild($hide_messages = FALSE) {
                 // ensure the file wasn't empty
                 if (isset($component->machine_name)) {
                   $entity = entity_create('webcomponent', (array)$component);
-                  entity_save('webcomponent', $entity);
+                  $entity->save();
                 }
               }
             }
@@ -363,8 +374,17 @@ function webcomponents_load_webcomponents_files() {
  * @return object       fully loaded entity
  */
 function webcomponent_load_by_name($name) {
-  $entity = entity_load('webcomponent', FALSE, array('machine_name' => $name));
-  $entity = array_pop($entity);
+  $entity = FALSE;
+  $query = new EntityFieldQuery();
+  $result = $query
+  ->entityCondition('entity_type', 'webcomponent')
+  ->propertyCondition('machine_name', $name)
+  ->execute();
+  // flip the results if it found them
+  if (isset($result['webcomponent'])) {
+    $tmp = array_pop($result['webcomponent']);
+    $entity = entity_load('webcomponent', $tmp->wid);
+  }
   return $entity;
 }
 
