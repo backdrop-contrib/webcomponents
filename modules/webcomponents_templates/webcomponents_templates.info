@@ -1,0 +1,6 @@
+name = Webcomponents: WYSIWYG Templates
+description = Provides wysiwyg template support to webcomponents.
+backdrop = 1.x
+type = module
+dependencies[] = webcomponents
+dependencies[] = wysiwyg_template

@@ -1,0 +1,6 @@
+name = Webcomponents: Polymer support
+description = Provides support for polymer to webcomponents.
+backdrop = 1.x
+type = module
+dependencies[] = simplehtmldom
+dependencies[] = webcomponents

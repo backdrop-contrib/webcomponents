@@ -1,0 +1,5 @@
+name = Webcomponents: One Page App integration
+description = Provides drop dead simple support for one page apps.
+backdrop = 1.x
+type = module
+dependencies[] = webcomponents
