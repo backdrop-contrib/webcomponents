@@ -28,25 +28,36 @@ function webcomponents_preprocess_page(&$vars) {
   // load webcomponentsjs polyfill library if it exists
   $libraries = libraries_get_libraries();
   if (isset($libraries['webcomponents']) && is_dir(BACKDROP_ROOT . '/' . $libraries['webcomponents'] . '/webcomponentsjs')) {
+    // we don't support full polyfill in backdrop
+    $polyfill = 'webcomponents-lite.min.js';
     $inline = "
-<script type='text/javascript'>
-window.onload = function() {
-  if ('registerElement' in document
-    && 'import' in document.createElement('link')
-    && 'content' in document.createElement('template')) {
-    // platform is good!
-  }
-  else {
-    // polyfill the platform!
-    var e = document.createElement('script');
-    e.src = '" . base_path() . $libraries['webcomponents'] . "/webcomponentsjs/webcomponents-lite.min.js';
-    document.head.appendChild(e);
-  }
-};
-</script>";
+      <script type='text/javascript'>
+      window.onload = function() {
+        if ('registerElement' in document
+          && 'import' in document.createElement('link')
+          && 'content' in document.createElement('template')) {
+          // platform is good!
+        }
+        else {
+          // polyfill the platform!
+          var wjs = document.createElement('script');
+          wjs.src = '" . _webcomponents_base_path() . $libraries['webcomponents'] . "/webcomponentsjs/" . $polyfill . "';
+          document.head.appendChild(wjs);
+        }";
+          // support for custom element v0 -> v1 polyfill
+          if (isset($libraries['webcomponents']) && is_dir(BACKDROP_ROOT . '/' . $libraries['webcomponents'] . '/document-register-element')) {
+            $inline .="
+        var dre = document.createElement('script');
+        dre.src = '" . _webcomponents_base_path() . $libraries['webcomponents'] . "/document-register-element/build/document-register-element.js';
+        document.head.appendChild(dre);";
+          }
+          $inline .="
+      };
+      </script>";
     $element = array(
       '#type' => 'markup',
       '#markup' => $inline,
+      '#weight' => -10000000,
     );
     backdrop_add_html_head($element, 'webcomponents-lite');
   }
