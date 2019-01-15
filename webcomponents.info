@@ -6,3 +6,4 @@ version = VERSION
 type = module
 dependencies[] = entity
 dependencies[] = libraries
+configure = admin/config/content/webcomponents

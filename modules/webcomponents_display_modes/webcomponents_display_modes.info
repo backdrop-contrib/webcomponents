@@ -1,8 +1,0 @@
-name = Webcomponents: Display modes
-description = Provides display modes based on webcomponent entities.
-backdrop = 1.x
-package = Webcomponents
-version = VERSION
-type = module
-dependencies[] = webcomponents
-dependencies[] = field_formatter_settings

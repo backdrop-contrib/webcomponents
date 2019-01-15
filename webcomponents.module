@@ -4,63 +4,73 @@
  */
 
 define('WEBCOMPONENTS_CLASS_IDENTIFIER', 'webcomponent-module-selector');
+include_once 'WebComponentsService.php';
 
 /**
  * Implements hook_preprocess_page().
  */
 function webcomponents_preprocess_page(&$vars) {
-  $components = webcomponents_load_all();
-  $files = array();
-  // ensure files w/ multiple elements are only
-  // imported once
-  foreach ($components as $component) {
-    // if it matches multiple to same file
-    // it doesn't matter since it'll still be available
-    $files[$component->file] = $component;
-  }
-  // let developers modify which files are appended to the document
-  // right before we do so
-  backdrop_alter('webcomponent_attached_files', $files);
-  // write the component file reference to the screen
-  foreach ($files as $component) {
-    _webcomponents_add_to_head($component);
+  $config = config('webcomponents.settings');
+  // generate autoload list
+  $location = $config->get('webcomponents_project_location');
+  if (strpos($location, 'http') === FALSE) {
+    $location = base_path() . $location;
   }
   // load webcomponentsjs polyfill library if it exists
-  $libraries = libraries_get_libraries();
-  if (isset($libraries['webcomponents']) && is_dir(BACKDROP_ROOT . '/' . $libraries['webcomponents'] . '/webcomponentsjs')) {
-    // we don't support full polyfill in backdrop
-    $polyfill = 'webcomponents-lite.min.js';
-    $inline = "
-      <script type='text/javascript'>
-      window.onload = function() {
-        if ('registerElement' in document
-          && 'import' in document.createElement('link')
-          && 'content' in document.createElement('template')) {
-          // platform is good!
-        }
-        else {
-          // polyfill the platform!
-          var wjs = document.createElement('script');
-          wjs.src = '" . _webcomponents_base_path() . $libraries['webcomponents'] . "/webcomponentsjs/" . $polyfill . "';
-          document.head.appendChild(wjs);
-        }";
-          // support for custom element v0 -> v1 polyfill
-          if (isset($libraries['webcomponents']) && is_dir(BACKDROP_ROOT . '/' . $libraries['webcomponents'] . '/document-register-element')) {
-            $inline .="
-        var dre = document.createElement('script');
-        dre.src = '" . _webcomponents_base_path() . $libraries['webcomponents'] . "/document-register-element/build/document-register-element.js';
-        document.head.appendChild(dre);";
-          }
-          $inline .="
-      };
-      </script>";
-    $element = array(
-      '#type' => 'markup',
-      '#markup' => $inline,
-      '#weight' => -10000000,
-    );
-    backdrop_add_html_head($element, 'webcomponents-lite');
-  }
+  $wc = new WebComponentsService();
+  $element = array(
+    '#type' => 'markup',
+    '#markup' => $wc->applyWebcomponents($location),
+  );
+  drupal_add_html_head($element, 'webcomponents');
+}
+
+/**
+ * Implements hook_menu().
+ */
+function webcomponents_menu() {
+    $items['admin/config/content/webcomponents'] = array(
+    'title' => 'Web components',
+    'description' => 'Settings for basic customizations to web components.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('webcomponents_settings_form'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('administer site configuration'),
+  );
+  return $items;
+}
+
+/**
+ * Set CDN if you want
+ */
+function webcomponents_settings_form($form, $form_state) {
+  $config = config('webcomponents.settings');
+  $form = array();
+  $form['webcomponents_project_location'] = array(
+    '#type' => 'textfield',
+    '#title' => t('CDN location'),
+    '#default_value' => $config->get('webcomponents_project_location'),
+    '#description' => t("Base path needs to start without a slach and end with a slash. This supports CDNs as well."),
+  );
+  // Add a submit button
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for module_settings_form().
+ */
+function webcomponents_settings_form_submit($form, &$form_state) {
+  $config = config('webcomponents.settings');
+  $config->set('webcomponents_project_location', $form_state['values']['webcomponents_project_location']);
+  $config->save();
+
+  backdrop_set_message(t('The configuration options have been saved.'));
 }
 
 /**
@@ -118,7 +128,6 @@ function _webcomponents_render_component($component) {
     if (!is_array($component->properties)) {
       $component->properties = unserialize($component->properties);
     }
-    _webcomponents_add_to_head($component);
     // support token replacement of properties passed in
     foreach ($component->properties as &$property) {
       $property = token_replace($property);
@@ -421,12 +430,14 @@ function webcomponent_load_by_name($name) {
  * @param  string $dir a directory to search for .html includes
  * @return array       an array of html files to look for web components in
  */
-function _webcomponents_find_html_includes($dir, $ignore = array(), $find = '.html') {
+function _webcomponents_find_includes($dir, $ignore = array(), $find = '.js') {
   $files = array();
   // common things to ignore
   $ignore[] = '.';
   $ignore[] = '..';
   $ignore[] = 'index.html';
+  $ignore[] = 'node_modules';
+  $ignore[] = 'demo';
   if (is_dir($dir)) {
     // step into the polymer directory and find all html templates
     $di = new DirectoryIterator(BACKDROP_ROOT . '/' . $dir);

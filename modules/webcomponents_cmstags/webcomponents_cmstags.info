@@ -1,7 +1,0 @@
-name = Webcomponents: CMS Tags
-description = Support for cms-* tags which can decouple a CMS quickly.
-backdrop = 1.x
-package = Webcomponents
-version = VERSION
-type = module
-dependencies[] = webcomponents

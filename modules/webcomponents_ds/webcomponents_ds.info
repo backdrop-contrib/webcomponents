@@ -1,8 +1,0 @@
-name = Webcomponents: Display Suite
-description = Provides Display Suite support to webcomponents.
-backdrop = 1.x
-package = Webcomponents
-version = VERSION
-type = module
-dependencies[] = webcomponents
-dependencies[] = ds
